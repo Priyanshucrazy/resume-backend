@@ -22,13 +22,7 @@ def get_gemini_response(input):
 
 def input_pdf_text(uploaded_file):
     reader = pdf.PdfReader(uploaded_file)
-    text = ""
-    for page in reader.pages:
-        extracted = page.extract_text()
-        if extracted:
-            text += extracted
-    if not text.strip():
-        raise ValueError("Could not extract text from the PDF. Please try another file.")
+    text = "".join([str(page.extract_text()) for page in reader.pages])
     return text
 
 @app.route("/evaluate", methods=["POST"])
