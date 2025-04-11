@@ -1,4 +1,3 @@
-# Updated app.py with text extraction endpoint
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import google.generativeai as genai
@@ -19,7 +18,13 @@ def get_gemini_response(input):
 
 def input_pdf_text(uploaded_file):
     reader = pdf.PdfReader(uploaded_file)
-    text = "".join([str(page.extract_text()) for page in reader.pages])
+    text = ""
+    for page in reader.pages:
+        extracted = page.extract_text()
+        if extracted:
+            text += extracted
+    if not text.strip():
+        raise ValueError("Could not extract text from the PDF. Please try another file.")
     return text
 
 @app.route("/evaluate", methods=["POST"])
@@ -29,7 +34,11 @@ def evaluate_resume():
 
     resume_file = request.files["resume"]
     jd = request.form["jd"]
-    resume_text = input_pdf_text(resume_file)
+
+    try:
+        resume_text = input_pdf_text(resume_file)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
     input_prompt = f"""
     Hey Act Like a skilled or very experienced ATS (Application Tracking System)
@@ -49,7 +58,7 @@ def evaluate_resume():
     """
 
     response = get_gemini_response(input_prompt)
-    return jsonify({"evaluation": response})
+    return jsonify({"evaluation": response, "resume_text": resume_text})
 
 @app.route("/extract_text", methods=["POST"])
 def extract_text():
@@ -69,6 +78,5 @@ def extract_text():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host="0.0.0.0", port=port)
